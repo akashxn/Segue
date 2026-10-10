@@ -1,0 +1,933 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Segue</title>
+<link rel="icon" href="/icon.png">
+<!--
+  Segue's one page. Mac conventions throughout: system font at macOS sizes (13 body,
+  11 caption), an inset source-list sidebar, a toolbar that doubles as the title bar,
+  capsule controls, default cursor, light and dark from the system setting.
+  Colour: neutral chrome, one indigo accent for actions and selection, status colours
+  for transitions, and rekordbox's own phrase colours for phrase data.
+  All colours and sizes are tokens in :root; change them there.
+-->
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #ffffff; --bg-side: #f2f2f5; --bg-raised: #ffffff; --bar: rgba(255, 255, 255, .8);
+    --ink: #1d1d1f; --ink-2: #6e6e73;
+    --line: rgba(0, 0, 0, .1); --line-soft: rgba(0, 0, 0, .06); --line-strong: rgba(0, 0, 0, .2);
+    --fill: rgba(0, 0, 0, .055); --fill-hover: rgba(0, 0, 0, .09); --fill-press: rgba(0, 0, 0, .14);
+    --fill-sel: rgba(0, 0, 0, .09); --stripe: rgba(0, 0, 0, .028); --seg-on: #ffffff;
+    --accent: #5856d6; --accent-hover: #4a48c4; --accent-ink: #5856d6; --focus: rgba(88, 86, 214, .5);
+    --good: #1a7f37; --warn: #a15c00; --bad: #d12e24;
+    --good-mark: #2fa84f; --warn-mark: #f09a00; --bad-mark: #e5484d; --arc: rgba(0, 0, 0, .2);
+    --shadow: 0 10px 34px rgba(0, 0, 0, .16), 0 1px 3px rgba(0, 0, 0, .08);
+    /* rekordbox's phrase colours, so a strip reads the same as it does there */
+    --ph-intro: #e5484d; --ph-up: #8e4ec6; --ph-down: #8a5a2b; --ph-chorus: #3ba55d;
+    --ph-verse: #2f7fe0; --ph-bridge: #d19e00; --ph-outro: #8a94a0; --ph-phrase: #a3a3a8;
+    --toolbar: 52px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1c1e; --bg-side: #262629; --bg-raised: #2c2c2e; --bar: rgba(28, 28, 30, .78);
+      --ink: #f5f5f7; --ink-2: #a1a1a6;
+      --line: rgba(255, 255, 255, .1); --line-soft: rgba(255, 255, 255, .07); --line-strong: rgba(255, 255, 255, .24);
+      --fill: rgba(255, 255, 255, .09); --fill-hover: rgba(255, 255, 255, .13); --fill-press: rgba(255, 255, 255, .19);
+      --fill-sel: rgba(255, 255, 255, .12); --stripe: rgba(255, 255, 255, .03); --seg-on: rgba(255, 255, 255, .17);
+      --accent: #5e5ce6; --accent-hover: #6d6bf0; --accent-ink: #9a98ff; --focus: rgba(125, 122, 255, .6);
+      --good: #32d15d; --warn: #ffb340; --bad: #ff6961;
+      --good-mark: #32d15d; --warn-mark: #ffb340; --bad-mark: #ff6259; --arc: rgba(255, 255, 255, .26);
+      --shadow: 0 12px 38px rgba(0, 0, 0, .5), 0 0 0 .5px rgba(255, 255, 255, .12);
+      --ph-intro: #eb5a50; --ph-up: #b06ce6; --ph-down: #a06c38; --ph-chorus: #2ead62;
+      --ph-verse: #3d86ec; --ph-bridge: #c59700; --ph-outro: #808b98; --ph-phrase: #6f6f76;
+    }
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; margin: 0; overflow: hidden; overscroll-behavior: none; }
+  body { background: var(--bg); color: var(--ink); cursor: default;
+         font: 13px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+         font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased;
+         -webkit-user-select: none; user-select: none; caret-color: var(--accent); }
+  .selectable, .selectable * { -webkit-user-select: text; user-select: text; cursor: text; }
+  ::selection { background: color-mix(in srgb, var(--accent) 32%, transparent); }
+  :focus { outline: none; }
+  :focus-visible { outline: 3px solid var(--focus); outline-offset: 1px; }
+  h1, h2, h3, p, ol, ul { margin: 0; }
+  i { font-style: normal; }
+  .i { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.5;
+       stroke-linecap: round; stroke-linejoin: round; }
+
+  /* ---------- controls ---------- */
+  .btn { appearance: none; border: 0; margin: 0; font: inherit; font-weight: 500; cursor: default; height: 28px;
+         padding: 0 13px; border-radius: 999px; background: var(--fill); color: var(--ink); white-space: nowrap;
+         display: inline-flex; align-items: center; justify-content: center; gap: 6px; transition: background .15s; }
+  .btn:hover { background: var(--fill-hover); } .btn:active { background: var(--fill-press); }
+  .btn.primary { background: var(--accent); color: #fff; }
+  .btn.primary:hover { background: var(--accent-hover); }
+  .btn.primary:active { background: color-mix(in srgb, var(--accent) 82%, #000); }
+  .btn.icon { width: 28px; padding: 0; }
+  .btn.quiet { background: transparent; color: var(--ink-2); }
+  .btn.quiet:hover { background: var(--fill); color: var(--ink); } .btn.quiet:active { background: var(--fill-hover); }
+  .btn.stop { color: var(--bad); }
+  .btn:disabled { opacity: .4; pointer-events: none; }
+  .seg { display: inline-flex; padding: 2px; border-radius: 999px; background: var(--fill); }
+  .seg button { appearance: none; border: 0; font: inherit; font-weight: 500; color: var(--ink); cursor: default; height: 24px;
+                padding: 0 16px; border-radius: 999px; background: transparent; display: inline-flex; align-items: center; gap: 6px; }
+  .seg button[aria-selected="true"] { background: var(--seg-on); box-shadow: 0 1px 2.5px rgba(0, 0, 0, .16), 0 0 0 .5px rgba(0, 0, 0, .05); }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--warn-mark); flex: none; }
+  .spin { width: 14px; height: 14px; flex: none; border-radius: 50%; border: 2px solid var(--fill-press);
+          border-top-color: var(--ink-2); animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(1turn); } }
+
+  /* ---------- layout ---------- */
+  .app { display: flex; height: 100%; }
+  .sidebar { flex: 0 0 248px; margin: 8px 0 8px 8px; display: flex; flex-direction: column; overflow: hidden;
+             background: var(--bg-side); border: 1px solid var(--line-soft); border-radius: 18px; }
+  .app.no-side .sidebar { display: none; }
+  main { flex: 1; min-width: 0; position: relative; }
+
+  /* ---------- sidebar ---------- */
+  .side-top { flex: none; height: 34px; display: flex; align-items: center; justify-content: space-between; padding: 0 3px 0 12px; }
+  .brand { display: flex; align-items: center; gap: 7px; font-weight: 600; }
+  .brand img { width: 20px; height: 20px; }
+  .native .brand { visibility: hidden; }   /* the traffic lights sit here in the app window */
+  .search { flex: none; margin: 8px 10px 2px; height: 28px; display: flex; align-items: center; gap: 6px; padding: 0 9px;
+            border-radius: 999px; background: var(--fill); color: var(--ink-2); }
+  .search:focus-within { outline: 3px solid var(--focus); }
+  .search input { appearance: none; -webkit-appearance: none; border: 0; padding: 0; margin: 0; background: none; outline: none;
+                  flex: 1; min-width: 0; font: inherit; color: var(--ink); cursor: text; -webkit-user-select: text; user-select: text; }
+  .search input::placeholder { color: var(--ink-2); }
+  .search input::-webkit-search-cancel-button, .search input::-webkit-search-decoration { -webkit-appearance: none; }
+  .side-list { flex: 1; overflow-y: auto; padding: 0 8px 10px; }
+  .group { font-size: 11px; font-weight: 600; color: var(--ink-2); padding: 14px 8px 5px; }
+  .row { height: 30px; display: flex; align-items: center; gap: 8px; padding: 0 8px; border-radius: 8px; }
+  .row .i { color: var(--accent-ink); }
+  .row .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row .trail { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--ink-2); }
+  .row.empty .name { color: var(--ink-2); } .row.empty .i { color: var(--ink-2); }
+  .row:hover { background: var(--fill); }
+  .row[aria-selected="true"] { background: var(--fill-sel); font-weight: 500; }
+  .row:focus-visible { outline-offset: -3px; }
+  .side-note { padding: 18px 10px; color: var(--ink-2); font-size: 12px; line-height: 1.45; }
+  .side-note .btn { margin-top: 10px; }
+  .skeleton { height: 30px; display: flex; align-items: center; padding: 0 8px; }
+  .skeleton::before { content: ""; height: 9px; width: var(--w, 60%); border-radius: 5px; background: var(--fill); }
+  .side-foot { flex: none; height: 38px; display: flex; align-items: center; justify-content: space-between;
+               padding: 0 5px 0 16px; border-top: 1px solid var(--line-soft); font-size: 11px; color: var(--ink-2); }
+
+  /* ---------- toolbar ---------- */
+  .toolbar { position: absolute; z-index: 5; inset: 0 0 auto 0; height: var(--toolbar); padding: 0 16px 0 20px;
+             display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(max-content, 1fr); align-items: center; gap: 16px;
+             background: var(--bar); -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px);
+             border-bottom: 1px solid transparent; transition: border-color .2s; }
+  main.scrolled .toolbar { border-bottom-color: var(--line); }
+  .lead { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  #show-side { display: none; margin-left: -8px; }
+  .app.no-side #show-side { display: inline-flex; }
+  .native .app.no-side:not(.fullscreen) .toolbar { padding-left: 88px; }
+  .titles { min-width: 0; }
+  .titles h1 { font-size: 15px; line-height: 19px; font-weight: 600; letter-spacing: -.01em;
+               overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .titles p { font-size: 11px; line-height: 14px; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tools { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+
+  .scroller { position: absolute; inset: 0; overflow-y: auto; container-type: inline-size; }
+  .scroller::before { content: ""; display: block; height: var(--toolbar); }   /* content starts below the toolbar, then scrolls under it */
+  .pane { padding-bottom: 112px; }
+  .center { min-height: calc(100vh - var(--toolbar) - 130px); display: grid; place-content: center; justify-items: center;
+            text-align: center; padding: 32px 24px; }
+  .center > .i { width: 44px; height: 44px; stroke-width: 1; color: var(--ink-2); margin-bottom: 14px; }
+  .center img { width: 104px; height: 104px; margin-bottom: 4px; }
+  .center h2 { font-size: 22px; line-height: 28px; font-weight: 700; letter-spacing: -.015em; }
+  .center h2.small { font-size: 17px; line-height: 22px; font-weight: 600; }
+  .center p { max-width: 46ch; margin-top: 6px; color: var(--ink-2); line-height: 1.45; text-wrap: balance; }
+  .center .actions { display: flex; gap: 8px; margin-top: 18px; }
+  .center .fine { font-size: 11px; margin-top: 12px; }
+  .note { display: flex; gap: 7px; align-items: flex-start; line-height: 1.45; }
+  .note .i { margin-top: 1px; }
+  .note.warn { color: var(--warn); } .note.good .i { color: var(--good); } .note.bad { color: var(--bad); }
+  .center .note { margin-top: 10px; font-size: 12px; text-align: left; max-width: 50ch; }
+  .message { padding: 28px 24px; color: var(--ink-2); }
+
+  /* ---------- tracks tab ---------- */
+  .tracks-head { padding: 16px 24px 14px; display: grid; gap: 8px; }
+  .tracks-head .note { color: var(--ink-2); } .tracks-head .note.warn { color: var(--warn); }
+  .guide { padding: 4px 0 6px; max-width: 68ch; }
+  .guide h2 { font-size: 15px; line-height: 20px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .guide h2 .dot { width: 8px; height: 8px; }
+  .guide > p { color: var(--ink-2); margin-top: 4px; line-height: 1.45; }
+  .guide ol { padding: 0; margin: 12px 0 14px; list-style: none; counter-reset: step; display: grid; gap: 7px; }
+  .guide li { counter-increment: step; display: flex; gap: 10px; line-height: 1.45; }
+  .guide li::before { content: counter(step); flex: none; width: 19px; height: 19px; border-radius: 50%; background: var(--fill-hover);
+                      font-size: 11px; font-weight: 600; display: grid; place-items: center; margin-top: -.5px; }
+  .guide .after { display: flex; align-items: center; gap: 12px; color: var(--ink-2); font-size: 12px; }
+  table { width: calc(100% - 32px); margin: 0 16px; border-collapse: separate; border-spacing: 0; table-layout: fixed; }
+  th { position: sticky; top: var(--toolbar); z-index: 2; height: 28px; padding: 0 8px; text-align: left; font-size: 11px;
+       font-weight: 500; color: var(--ink-2); background: var(--bar); -webkit-backdrop-filter: saturate(180%) blur(20px);
+       backdrop-filter: saturate(180%) blur(20px); border-bottom: 1px solid var(--line); }
+  td { height: 30px; padding: 0 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  tbody tr:nth-child(even) td { background: var(--stripe); }
+  td:first-child { border-radius: 7px 0 0 7px; } td:last-child { border-radius: 0 7px 7px 0; }
+  .r { text-align: right; } th.r { text-align: right; }
+  td.muted, td .muted { color: var(--ink-2); }
+  td .todo { color: var(--warn); display: inline-flex; align-items: center; gap: 6px; }
+  td .i { vertical-align: -3px; color: var(--ink-2); }
+  col.c-n { width: 44px; } col.c-artist { width: 25%; } col.c-src { width: 96px; } col.c-num { width: 58px; }
+  col.c-key { width: 48px; } col.c-state { width: 112px; }
+  @container (max-width: 760px) { col.c-src { width: 0; } .c-src-cell { display: none; } }
+
+  /* ---------- set tab ---------- */
+  .set-head { padding: 18px 24px 6px; display: grid; gap: 16px; }
+  .set-meta { color: var(--ink-2); font-size: 12px; display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; }
+  .set-meta .in-rb { display: inline-flex; align-items: center; gap: 5px; }
+  .set-meta .in-rb .i { color: var(--good); width: 14px; height: 14px; stroke-width: 1.8; }
+  .lede { font-size: 13px; line-height: 1.55; max-width: 74ch; text-wrap: pretty; }
+  details.more { font-size: 12px; color: var(--ink-2); }
+  details.more summary { display: inline-flex; align-items: center; gap: 6px; list-style: none; border-radius: 6px; }
+  details.more summary::-webkit-details-marker { display: none; }
+  details.more summary .i { width: 12px; height: 12px; stroke-width: 2; transition: transform .15s; }
+  details.more[open] summary .i { transform: rotate(90deg); }
+  details.more ul { margin: 6px 0 2px 18px; padding: 0; list-style: none; display: grid; gap: 3px; line-height: 1.4; }
+
+  .arc { position: relative; display: grid; grid-template-columns: 54px minmax(0, 1fr) 62px; row-gap: 10px; align-items: stretch; }
+  .arc-label { font-size: 11px; color: var(--ink-2); align-self: end; padding-bottom: 1px; }
+  .arc-cols { display: flex; align-items: flex-end; gap: var(--gap, 2px); height: 60px; border-bottom: 1px solid var(--line); }
+  .arc-cols span { flex: 1; min-width: 0; height: 100%; display: flex; align-items: flex-end; justify-content: center; }
+  .arc-cols i { width: 100%; max-width: 22px; min-height: 2px; height: calc(var(--e) * 100%); background: var(--arc);
+                border-radius: 3px 3px 0 0; transition: background .1s; }
+  .arc-cols span.on i { background: var(--accent); }
+  .arc-tempo { position: relative; height: 38px; }
+  .arc-tempo svg { position: absolute; inset: 5px 0; width: 100%; height: calc(100% - 10px); overflow: visible; }
+  .arc-tempo polyline { fill: none; stroke: var(--ink-2); stroke-width: 2; vector-effect: non-scaling-stroke;
+                        stroke-linejoin: round; stroke-linecap: round; }
+  .arc-dot { position: absolute; width: 8px; height: 8px; margin: -4px 0 0 -4px; border-radius: 50%; background: var(--accent);
+             box-shadow: 0 0 0 2px var(--bg); }
+  .arc-scale { font-size: 11px; color: var(--ink-2); display: flex; flex-direction: column; justify-content: space-between;
+               padding-left: 8px; white-space: nowrap; }
+  .arc-flags { position: relative; height: 10px; }
+  .mark { display: inline-block; width: 7px; height: 7px; flex: none; }
+  .mark.smooth { border-radius: 50%; background: var(--good-mark); }
+  .mark.ok { border-radius: 50%; background: var(--arc); }
+  .mark.clash { border-radius: 50%; background: var(--warn-mark); }
+  .mark.hard { background: var(--bad-mark); transform: rotate(45deg); border-radius: 1px; }
+  .arc-flags .mark { position: absolute; top: 1px; margin-left: -3.5px; }
+  .arc-hit { position: absolute; inset: 0 62px 0 54px; }
+  .tally { font-size: 11px; color: var(--ink-2); display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; padding-left: 54px; }
+  .tally span { display: inline-flex; align-items: center; gap: 6px; }
+
+  .key { padding: 14px 24px 10px; display: grid; gap: 6px; font-size: 11px; color: var(--ink-2); }
+  .key div { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; }
+  .key span { display: inline-flex; align-items: center; gap: 5px; }
+  .key b { font-weight: 600; color: var(--ink); }
+  .sw { width: 9px; border-radius: 2px; align-self: flex-end; margin-bottom: 2px; }
+
+  .grid { display: grid; grid-template-columns: 34px minmax(0, 1fr) minmax(260px, 1.2fr) 50px 40px 46px; column-gap: 16px; padding: 0 24px; }
+  .cols { position: sticky; top: var(--toolbar); z-index: 2; height: 28px; align-items: center; font-size: 11px; font-weight: 500;
+          color: var(--ink-2); background: var(--bar); -webkit-backdrop-filter: saturate(180%) blur(20px);
+          backdrop-filter: saturate(180%) blur(20px); border-bottom: 1px solid var(--line); }
+  .cols .c { text-align: center; }
+  .set-list { list-style: none; padding: 8px 0 0; }
+  .track { padding-top: 10px; padding-bottom: 10px; align-items: start; scroll-margin-top: 120px; border-radius: 10px; }
+  .track.flash { animation: flash 1.4s ease-out; }
+  @keyframes flash { from { background: color-mix(in srgb, var(--accent) 16%, transparent); } to { background: transparent; } }
+  .num { text-align: center; color: var(--ink-2); font-weight: 500; line-height: 18px; }
+  .title { font-weight: 600; line-height: 18px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .artist { color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .why { color: var(--ink-2); font-size: 12px; line-height: 1.45; margin-top: 5px; max-width: 60ch; text-wrap: pretty; }
+  .own { color: var(--ink-2); font-size: 11px; margin-top: 5px; display: flex; gap: 5px; align-items: flex-start; }
+  .own .i { width: 13px; height: 13px; margin-top: 1px; }
+  .stat { text-align: right; line-height: 18px; }
+
+  .shape { min-width: 0; }
+  .strip { position: relative; height: 34px; }
+  .strip .phs { position: absolute; inset: 12px 0 4px; display: flex; align-items: flex-end; }
+  .strip .phs span { height: 100%; display: flex; align-items: flex-end; padding-right: 2px; min-width: 0; }
+  .strip .phs span:last-child { padding-right: 0; }
+  .strip .phs i { width: 100%; border-radius: 2px; }
+  .ph-intro { background: var(--ph-intro); height: 42%; } .ph-outro { background: var(--ph-outro); height: 42%; }
+  .ph-down { background: var(--ph-down); height: 56%; } .ph-bridge { background: var(--ph-bridge); height: 56%; }
+  .ph-up { background: var(--ph-up); height: 76%; } .ph-verse { background: var(--ph-verse); height: 76%; }
+  .ph-chorus { background: var(--ph-chorus); height: 100%; } .ph-phrase { background: var(--ph-phrase); height: 60%; }
+  .strip .veil { position: absolute; top: 12px; bottom: 4px; background: var(--bg); opacity: .74; pointer-events: none; }
+  .strip .cue { position: absolute; top: 10px; bottom: 2px; width: 1.5px; margin-left: -.75px; background: var(--ink); pointer-events: none; }
+  .strip .cue b { position: absolute; top: -11px; font-size: 9.5px; line-height: 10px; font-weight: 700; letter-spacing: .02em; }
+  .strip .cue.in b { left: -1px; } .strip .cue.out b { right: -1px; }
+  .strip .tick { position: absolute; bottom: 0; width: 1.5px; height: 5px; margin-left: -.75px; background: var(--ink-2); }
+  .cues { font-size: 11px; color: var(--ink-2); display: flex; flex-wrap: wrap; gap: 0 12px; margin-top: 3px; }
+  .cues b { font-weight: 600; color: var(--ink); margin-right: 3px; }
+
+  .segue { display: grid; grid-template-columns: 34px minmax(0, 1fr); column-gap: 16px; padding: 0 24px; }
+  .link { position: relative; }
+  .link::before { content: ""; position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; margin-left: -.5px; background: var(--line-strong); }
+  .link .mark { position: absolute; left: 50%; top: 13px; margin-left: -3.5px; box-shadow: 0 0 0 3px var(--bg); }
+  .segue-body { padding: 6px 0 10px; font-size: 12px; line-height: 1.45; color: var(--ink-2); max-width: 84ch; }
+  .segue-body b { font-weight: 600; color: var(--ink); }
+  .segue-body .how { color: var(--ink); opacity: .86; }
+
+  @container (max-width: 800px) {
+    .grid { grid-template-columns: 34px minmax(0, 1fr) 50px 40px 46px; }
+    .cols .c-shape { display: none; }
+    .track .shape { grid-column: 2 / -1; grid-row: 2; margin-top: 8px; }
+  }
+
+  /* ---------- activity ---------- */
+  .activity { position: absolute; z-index: 6; left: 50%; bottom: 16px; width: min(620px, calc(100% - 32px)); translate: -50% 0;
+              background: var(--bg-raised); border-radius: 20px; box-shadow: var(--shadow); overflow: hidden;
+              animation: rise .28s cubic-bezier(.2, .8, .2, 1); }
+  @keyframes rise { from { opacity: 0; translate: -50% 14px; } }
+  .act-bar { display: flex; align-items: center; gap: 12px; padding: 10px 10px 10px 16px; min-height: 52px; }
+  .act-icon { width: 28px; height: 28px; flex: none; display: grid; place-items: center; position: relative; }
+  .act-icon .i { width: 20px; height: 20px; stroke-width: 1.8; }
+  .act-icon.good { color: var(--good); } .act-icon.bad { color: var(--bad); }
+  .ring { position: absolute; inset: 0; transform: rotate(-90deg); }
+  .ring circle { fill: none; stroke-width: 2.5; stroke: var(--fill-press); }
+  .ring circle + circle { stroke: var(--accent); stroke-linecap: round; stroke-dasharray: 75.4; transition: stroke-dashoffset .12s linear; }
+  .act-icon output { font-size: 13px; font-weight: 700; }
+  .act-text { flex: 1; min-width: 0; }
+  .act-text strong { display: block; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .act-text span { display: block; font-size: 11px; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .act-time { font-size: 11px; color: var(--ink-2); }
+  .act-bar .btn.icon .i { transition: transform .2s; }
+  .activity.open #act-toggle .i { transform: rotate(180deg); }
+  .act-log { margin: 0; padding: 10px 16px; max-height: 190px; overflow-y: auto; border-top: 1px solid var(--line);
+             font: 11px/1.55 ui-monospace, "SF Mono", Menlo, monospace; white-space: pre-wrap; color: var(--ink-2); }
+  .act-progress { height: 3px; background: var(--fill); overflow: hidden; }
+  .act-progress i { display: block; height: 100%; background: var(--accent); transform-origin: left;
+                    transform: scaleX(var(--done, 0)); transition: transform .4s; }
+
+  /* ---------- menu, sheet, tooltip ---------- */
+  .menu { position: fixed; z-index: 30; padding: 5px; min-width: 232px; border-radius: 11px;
+          background: var(--bg-raised); color: var(--ink); box-shadow: var(--shadow), 0 0 0 .5px var(--line-strong); }
+  .menu button { appearance: none; border: 0; background: none; font: inherit; color: inherit; cursor: default; width: 100%;
+                 height: 26px; padding: 0 9px; border-radius: 6px; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+  .menu button small { font-size: 11px; color: var(--ink-2); }
+  .menu button:hover, .menu button:focus-visible { background: var(--accent); color: #fff; outline: none; }
+  .menu button:hover small, .menu button:focus-visible small { color: rgba(255, 255, 255, .8); }
+  dialog { border: 0; padding: 22px 20px 20px; width: 332px; border-radius: 18px; background: var(--bg-raised); color: var(--ink);
+           box-shadow: 0 26px 70px rgba(0, 0, 0, .34), 0 0 0 .5px var(--line-strong); text-align: center; }
+  dialog::backdrop { background: rgba(0, 0, 0, .3); }
+  dialog[open] { animation: sheet .22s cubic-bezier(.2, .8, .2, 1); }
+  @keyframes sheet { from { opacity: 0; transform: scale(.96); } }
+  dialog img { width: 64px; height: 64px; }
+  dialog h2 { font-size: 13px; line-height: 17px; font-weight: 700; margin-top: 10px; text-wrap: balance; }
+  dialog p { font-size: 11px; line-height: 1.45; margin-top: 7px; text-wrap: pretty; }
+  dialog ul { list-style: none; padding: 10px 0 0; margin: 12px 0 0; border-top: 1px solid var(--line); text-align: left;
+              font-size: 11px; line-height: 1.45; display: grid; gap: 6px; color: var(--ink-2); }
+  dialog form { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 18px; }
+  .tip { position: fixed; z-index: 20; pointer-events: none; max-width: 280px; padding: 7px 10px; border-radius: 9px; font-size: 11px;
+         line-height: 1.45; background: var(--bg-raised); box-shadow: var(--shadow), 0 0 0 .5px var(--line-strong); }
+  .tip strong { display: block; font-size: 12px; font-weight: 600; }
+  .tip span { display: block; color: var(--ink-2); }
+
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01s !important; transition: none !important; } }
+</style>
+<script>
+  // Inside the app window the title bar is hidden and the traffic lights overlap the sidebar.
+  window.shell = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.segueWindow;
+  if (window.shell) document.documentElement.classList.add('native');
+</script>
+</head><body>
+<svg hidden>
+  <symbol id="i-sidebar" viewBox="0 0 16 16"><rect x="1.75" y="2.75" width="12.5" height="10.5" rx="2.75"/><path d="M6 3v10"/></symbol>
+  <symbol id="i-search" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.25"/><path d="m10.2 10.2 3.3 3.3"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 16 16"><path d="M13 8a5 5 0 1 1-1.5-3.55"/><path d="M13.25 2v3h-3"/></symbol>
+  <symbol id="i-playlist" viewBox="0 0 16 16"><path d="M2 4h7.5M2 7.5h5M2 11h3.5M12.75 10.5V3.25"/><circle cx="11.1" cy="10.9" r="1.65"/></symbol>
+  <symbol id="i-segue" viewBox="0 0 16 16"><path d="M1.5 4.5h2.3c3.3 0 5.1 7 8.4 7h2.3" opacity=".42"/><path d="M1.5 11.5h2.3c3.3 0 5.1-7 8.4-7h2.3"/></symbol>
+  <symbol id="i-arranged" viewBox="0 0 16 16"><path d="M6.5 4h7.5M6.5 8h7.5M6.5 12h7.5"/><path d="m1.8 4 1 1 1.6-2M1.8 8l1 1 1.6-2M1.8 12l1 1 1.6-2"/></symbol>
+  <symbol id="i-check" viewBox="0 0 16 16"><path d="m3.5 8.5 3 3 6-7"/></symbol>
+  <symbol id="i-checkcircle" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.25"/><path d="m5.3 8.3 1.9 1.9 3.6-4.2"/></symbol>
+  <symbol id="i-warn" viewBox="0 0 16 16"><path d="M8 2.3 14.3 13H1.7zM8 6.6v2.9"/><path d="M8 11.3v.01" stroke-width="1.9"/></symbol>
+  <symbol id="i-info" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.25"/><path d="M8 7.4v3.6"/><path d="M8 5.1v.01" stroke-width="1.9"/></symbol>
+  <symbol id="i-fail" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.25"/><path d="m5.8 5.8 4.4 4.4M10.2 5.8l-4.4 4.4"/></symbol>
+  <symbol id="i-chevron" viewBox="0 0 16 16"><path d="m6 4 4 4-4 4"/></symbol>
+  <symbol id="i-down" viewBox="0 0 16 16"><path d="m4 6 4 4 4-4"/></symbol>
+  <symbol id="i-up" viewBox="0 0 16 16"><path d="m4 10 4-4 4 4"/></symbol>
+  <symbol id="i-close" viewBox="0 0 16 16"><path d="m4.5 4.5 7 7M11.5 4.5l-7 7"/></symbol>
+  <symbol id="i-wave" viewBox="0 0 16 16"><path d="M2 7v2M4.4 5v6M6.8 2.5v11M9.2 5.5v5M11.6 4v8M14 7v2"/></symbol>
+</svg>
+
+<div class="app" id="app">
+  <nav class="sidebar" aria-label="Playlists">
+    <div class="side-top" data-drag>
+      <div class="brand"><img src="/icon.png" alt="">Segue</div>
+      <button class="btn icon quiet" id="hide-side" title="Hide sidebar" aria-label="Hide sidebar"><svg class="i"><use href="#i-sidebar"/></svg></button>
+    </div>
+    <label class="search"><svg class="i"><use href="#i-search"/></svg>
+      <input type="search" id="search" placeholder="Search" aria-label="Search playlists" autocomplete="off" spellcheck="false"></label>
+    <div class="side-list" id="list" role="listbox" aria-label="Playlists"></div>
+    <div class="side-foot"><span id="library"></span>
+      <button class="btn icon quiet" id="refresh" title="Refresh from rekordbox" aria-label="Refresh from rekordbox"><svg class="i"><use href="#i-refresh"/></svg></button></div>
+  </nav>
+
+  <main id="main">
+    <header class="toolbar" data-drag>
+      <div class="lead">
+        <button class="btn icon quiet" id="show-side" title="Show sidebar" aria-label="Show sidebar"><svg class="i"><use href="#i-sidebar"/></svg></button>
+        <div class="titles"><h1 id="title"></h1><p id="subtitle"></p></div>
+      </div>
+      <div class="seg" id="tabs" role="tablist" aria-label="View" hidden>
+        <button role="tab" data-tab="tracks" id="tab-tracks">Tracks</button>
+        <button role="tab" data-tab="set" id="tab-set">Set</button>
+      </div>
+      <div class="tools" id="tools"></div>
+    </header>
+    <div class="scroller" id="scroller">
+      <section class="center" id="welcome"></section>
+      <section class="pane" id="pane-tracks" role="tabpanel" aria-labelledby="tab-tracks" hidden></section>
+      <section class="pane" id="pane-set" role="tabpanel" aria-labelledby="tab-set" hidden></section>
+    </div>
+
+    <div class="activity" id="activity" role="status" hidden>
+      <div class="act-bar">
+        <div class="act-icon" id="act-icon"></div>
+        <div class="act-text"><strong id="act-title"></strong><span id="act-line"></span></div>
+        <span class="act-time" id="act-time"></span>
+        <button class="btn stop" id="act-stop">Stop</button>
+        <button class="btn icon quiet" id="act-toggle" title="Show details" aria-label="Show details" aria-expanded="false"><svg class="i"><use href="#i-up"/></svg></button>
+        <button class="btn icon quiet" id="act-close" title="Dismiss" aria-label="Dismiss"><svg class="i"><use href="#i-close"/></svg></button>
+      </div>
+      <pre class="act-log selectable" id="act-log" hidden></pre>
+      <div class="act-progress" id="act-progress"><i></i></div>
+    </div>
+  </main>
+</div>
+
+<div class="menu" id="menu" role="menu" aria-label="Rebuild" hidden>
+  <button role="menuitem" data-run="build" data-body='{"ai":true,"fresh":true}'>Ask Claude Again <small id="menu-claude">several minutes</small></button>
+  <button role="menuitem" data-run="build" data-body='{"ai":false}'>Use Rules Only <small>instant</small></button>
+</div>
+<dialog id="sheet" aria-labelledby="sheet-title">
+  <img src="/icon.png" alt="">
+  <h2 id="sheet-title"></h2>
+  <p id="sheet-text"></p>
+  <ul id="sheet-list"></ul>
+  <form method="dialog"><button class="btn" value="cancel">Cancel</button><button class="btn primary" value="ok" id="sheet-ok">Add to rekordbox</button></form>
+</dialog>
+<div class="tip" id="tip" hidden></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+const icon = name => `<svg class="i" aria-hidden="true"><use href="#i-${name}"/></svg>`;
+const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+const mmss = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+const SOURCES = {spotify: 'Spotify', soundcloud: 'SoundCloud', tidal: 'TIDAL', local: 'Local files', beatport: 'Beatport'};
+const sourceName = s => SOURCES[s] || s.charAt(0).toUpperCase() + s.slice(1);
+const RATING = {smooth: 'Smooth', ok: 'OK', clash: 'Clash', hard: 'Hard'};
+const PHRASES = ['intro', 'up', 'down', 'verse', 'bridge', 'chorus', 'outro', 'phrase'];
+const PHRASE_NAME = {phrase: '8-bar block (no phrase analysis)'};
+const CUES = [['in', 'IN', 'start the track here'], ['body', 'BODY', 'be fully mixed in by here'],
+              ['drop', 'DROP', 'first chorus'], ['out', 'OUT', 'start the next track here']];
+const JOBS = {analyse: ['Analysing tracks', 'Analysis finished', 'Analysis failed'],
+              build: ['Building the set', 'Set built', 'The set could not be built'],
+              write: ['Adding to rekordbox', 'Added to rekordbox', 'Could not add to rekordbox']};
+
+// set: undefined while loading, null when none is built. tracks: undefined until the Tracks tab asks for them.
+const S = {playlists: null, listError: null, id: null, tab: 'set', set: undefined, setError: null, tracks: undefined,
+           tracksError: null, query: '', job: {running: false, lines: []}, jobAt: 0, showJob: false, notice: null, logOpen: false};
+
+async function api(path, body) {
+  const response = await fetch(path, body === undefined ? {} :
+    {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
+  const data = await response.json();
+  if (!response.ok) throw new Error((data && data.error) || `Request failed (${response.status})`);
+  return data;
+}
+const current = () => (S.playlists || []).find(p => p.id === S.id) || null;
+const todoCount = p => p.tracks - p.analysed;
+const busyWith = p => S.job.running && S.job.playlist_id === p.id;
+const arrangedCopy = p => (S.playlists || []).find(q => q.is_arranged && q.name === p.name + ' (arranged)');
+const originalOf = p => (S.playlists || []).find(q => !q.is_arranged && q.name + ' (arranged)' === p.name);
+
+let saveTimer;
+function remember() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => api('/api/state', {playlist: S.id, tab: S.tab,
+    sidebar: !$('app').classList.contains('no-side')}).catch(() => {}), 300);
+}
+
+// ---------- sidebar ----------
+function sourcesText(p) {
+  const parts = Object.entries(p.sources);
+  if (!parts.length) return 'Empty';
+  return parts.length === 1 ? sourceName(parts[0][0]) : parts.map(([s, n]) => `${n} ${sourceName(s)}`).join(', ');
+}
+
+function rowHTML(p) {
+  const todo = todoCount(p);
+  const about = [plural(p.tracks, 'track'), p.has_set ? 'set built' : '', todo ? `${todo} to analyse` : ''].filter(Boolean).join(' · ');
+  const trail = busyWith(p) ? '<span class="spin"></span>' : `${todo ? '<span class="dot"></span>' : ''}${p.tracks}`;
+  return `<div class="row${p.tracks ? '' : ' empty'}" role="option" tabindex="${p.id === S.id ? 0 : -1}" data-id="${esc(p.id)}"
+      aria-selected="${p.id === S.id}" title="${esc(p.name)} — ${esc(about)}">
+    ${icon(p.is_arranged ? 'arranged' : p.has_set ? 'segue' : 'playlist')}<span class="name">${esc(p.name)}</span>
+    <span class="trail">${trail}</span></div>`;
+}
+
+function renderSidebar() {
+  const list = $('list');
+  if (S.listError) {
+    list.innerHTML = `<div class="side-note"><b>Can’t read the rekordbox library.</b><br>${esc(S.listError)}
+      <br><button class="btn" id="retry">Try Again</button></div>`;
+    $('retry').onclick = loadPlaylists;
+  } else if (!S.playlists) {
+    list.innerHTML = '<div class="group">Playlists</div>' +
+      [62, 48, 70, 40, 56, 66, 44].map(w => `<div class="skeleton" style="--w:${w}%"></div>`).join('');
+  } else {
+    const q = S.query.trim().toLowerCase();
+    const shown = S.playlists.filter(p => !q || p.name.toLowerCase().includes(q));
+    const groups = [['Playlists', shown.filter(p => !p.is_arranged)], ['Arranged', shown.filter(p => p.is_arranged)]];
+    list.innerHTML = groups.filter(([, rows]) => rows.length)
+      .map(([name, rows]) => `<div class="group">${name}</div>${rows.map(rowHTML).join('')}`).join('') ||
+      `<div class="side-note">${q ? `No playlists match “${esc(S.query.trim())}”.` : 'No playlists in rekordbox yet.'}</div>`;
+    if (!list.querySelector('[tabindex="0"]')) list.querySelector('.row')?.setAttribute('tabindex', '0');
+  }
+  $('library').textContent = S.playlists ? plural(S.playlists.length, 'playlist') : S.listError ? '' : 'Reading rekordbox…';
+}
+
+async function loadPlaylists() {
+  $('refresh').disabled = true;
+  try { S.playlists = await api('/api/playlists'); S.listError = null; }
+  catch (e) { S.listError = e.message; }
+  $('refresh').disabled = false;
+  if (S.id && !current()) S.id = null;
+  renderSidebar(); renderHeader(); renderPanes();
+}
+
+async function select(id, tab) {
+  const p = (S.playlists || []).find(x => x.id === id);
+  if (!p) return;
+  const changed = id !== S.id;
+  S.id = id;
+  S.tab = tab || (!changed ? S.tab : p.has_set || !todoCount(p) ? 'set' : 'tracks');
+  if (changed) { S.set = undefined; S.tracks = undefined; S.setError = S.tracksError = null; $('scroller').scrollTop = 0; }
+  renderSidebar(); renderHeader(); renderPanes(); remember();
+  if (changed) await loadSet();
+  if (S.tab === 'tracks' && S.tracks === undefined) loadTracks();
+}
+
+async function loadSet() {
+  const id = S.id;
+  try { const set = await api('/api/set/' + id); if (S.id !== id) return; S.set = set; S.setError = null; }
+  catch (e) { if (S.id !== id) return; S.set = null; S.setError = e.message; }
+  renderHeader(); renderPanes();
+}
+
+async function loadTracks() {
+  const id = S.id;
+  try { const tracks = await api('/api/tracks/' + id); if (S.id !== id) return; S.tracks = tracks; S.tracksError = null; }
+  catch (e) { if (S.id !== id) return; S.tracks = null; S.tracksError = e.message; }
+  renderPanes();
+}
+
+function setTab(tab) {
+  if (!current()) return;
+  S.tab = tab;
+  $('scroller').scrollTop = 0;
+  renderHeader(); renderPanes(); remember();
+  if (tab === 'tracks' && S.tracks === undefined) loadTracks();
+}
+
+// ---------- toolbar ----------
+function renderHeader() {
+  const p = current();
+  closeMenu();
+  $('title').textContent = p ? p.name : '';
+  $('title').title = p ? p.name : '';
+  $('subtitle').textContent = p ? `${plural(p.tracks, 'track')}${p.tracks ? ' · ' + sourcesText(p) : ''}` : '';
+  $('tabs').hidden = !p;
+  for (const tab of $('tabs').children) tab.setAttribute('aria-selected', tab.dataset.tab === S.tab);
+  $('tab-tracks').innerHTML = `Tracks${p && todoCount(p) ? '<span class="dot" title="Some tracks need analysing"></span>' : ''}`;
+  $('tools').innerHTML = p && S.set ? `
+    <button class="btn" id="rebuild" aria-haspopup="menu" aria-expanded="false" data-busy title="Build the set again">Rebuild ${icon('down')}</button>
+    <button class="btn primary" id="add" data-busy>Add to rekordbox…</button>` : '';
+  syncBusy();
+}
+const syncBusy = () => document.querySelectorAll('[data-busy]').forEach(b => { b.disabled = S.job.running || b.dataset.off === '1'; });
+
+// ---------- panes ----------
+function renderPanes() {
+  const p = current();
+  $('welcome').hidden = !!p;
+  $('pane-tracks').hidden = !p || S.tab !== 'tracks';
+  $('pane-set').hidden = !p || S.tab !== 'set';
+  if (!p) {
+    $('welcome').innerHTML = S.listError
+      ? `${icon('warn')}<h2 class="small">Can’t read the rekordbox library</h2><p class="selectable">${esc(S.listError)}</p>`
+      : `<img src="/icon.png" alt=""><h2>Segue</h2><p>Choose a playlist to arrange it into a set, with in and out points for every track.</p>`;
+  } else if (S.tab === 'tracks') renderTracks(p);
+  else renderSet(p);
+  syncBusy();
+}
+
+function analysisHTML(p) {
+  const todo = todoCount(p);
+  let html = '';
+  if (!p.tracks) return `<p class="note">${icon('info')}This playlist is empty. Add tracks to it in rekordbox, then refresh.</p>`;
+  if (p.to_analyse_spotify) {
+    const running = S.job.running && S.job.kind === 'analyse' && busyWith(p);
+    html += `<div class="guide"><h2><span class="dot"></span>${plural(p.to_analyse_spotify, 'Spotify track')} to analyse</h2>
+      <p>rekordbox only analyses a Spotify track once it is loaded to a deck, so Segue works down the list and loads each one for you, skipping any that are already analysed. It uses both decks, so don’t start it while a deck is playing.</p>
+      <ol><li>Open this playlist in rekordbox and sort it by #.</li>
+        <li>Come back here and click Start Analysing.</li>
+        <li>Within 6 seconds, hover the mouse over the first track in rekordbox’s list, then leave the mouse and keyboard alone.</li></ol>
+      <div class="after">${running ? '<button class="btn stop" id="stop-inline">Stop</button><span>Analysing. Clicking another app also stops the run.</span>'
+        : '<button class="btn primary" data-run="analyse" data-busy>Start Analysing</button><span>Clicking another app stops the run.</span>'}</div></div>`;
+  }
+  if (p.to_analyse_other) html += `<p class="note warn">${icon('warn')}<span>${plural(p.to_analyse_other, 'track')} from other sources
+    ${p.to_analyse_other === 1 ? 'needs' : 'need'} analysing in rekordbox itself: select ${p.to_analyse_other === 1 ? 'it' : 'them'} there, right-click, and choose Analyze Track.</span></p>`;
+  if (!todo) html += `<p class="note good">${icon('checkcircle')}All ${plural(p.tracks, 'track')} analysed.</p>`;
+  return html;
+}
+
+function renderTracks(p) {
+  let body;
+  if (S.tracksError) body = `<p class="message selectable">Couldn’t load the tracks: ${esc(S.tracksError)}</p>`;
+  else if (!p.tracks) body = '';
+  else {
+    const rows = S.tracks ? S.tracks.map((t, i) => `<tr>
+        <td class="r muted">${i + 1}</td><td title="${esc(t.title)}">${esc(t.title) || '<span class="muted">Untitled</span>'}</td>
+        <td class="muted" title="${esc(t.artist)}">${esc(t.artist)}</td><td class="muted c-src-cell">${esc(sourceName(t.source))}</td>
+        <td class="r">${t.bpm ? t.bpm.toFixed(1) : '<span class="muted">–</span>'}</td><td>${esc(t.key) || '<span class="muted">–</span>'}</td>
+        <td class="r muted">${t.length ? mmss(t.length) : '–'}</td>
+        <td>${t.analysed ? `<span title="Analysed">${icon('check')}</span>` : '<span class="todo"><span class="dot"></span>Not analysed</span>'}</td></tr>`).join('')
+      : Array.from({length: Math.min(p.tracks, 14)}, (_, i) => `<tr><td colspan="8"><div class="skeleton" style="--w:${[46, 62, 38, 54, 70][i % 5]}%"></div></td></tr>`).join('');
+    body = `<table><colgroup><col class="c-n"><col><col class="c-artist"><col class="c-src"><col class="c-num"><col class="c-key"><col class="c-num"><col class="c-state"></colgroup>
+      <thead><tr><th class="r">#</th><th>Title</th><th>Artist</th><th class="c-src-cell">Source</th><th class="r">BPM</th><th>Key</th><th class="r">Time</th><th>Analysis</th></tr></thead>
+      <tbody>${rows}</tbody></table>`;
+  }
+  $('pane-tracks').innerHTML = `<div class="tracks-head">${analysisHTML(p)}</div>${body}`;
+}
+
+function builtWhen(stamp) {
+  const [date, time] = stamp.split(' ');
+  const [y, m, d] = date.split('-').map(Number);
+  const day = new Date(y, m - 1, d), today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const days = Math.round((today - day) / 864e5);
+  const label = days === 0 ? 'today' : days === 1 ? 'yesterday' : day.toLocaleDateString(undefined, {day: 'numeric', month: 'short'});
+  return `${label} at ${time}`;
+}
+
+function emptySetHTML(p) {
+  const todo = todoCount(p), ready = p.analysed >= 2, original = p.is_arranged && originalOf(p);
+  const notes = [];
+  if (S.setError) notes.push(`<p class="note bad selectable">${icon('warn')}<span>Couldn’t load the set: ${esc(S.setError)}</span></p>`);
+  if (!ready) notes.push(`<p class="note warn">${icon('warn')}<span>A set needs at least two analysed tracks. ${p.tracks ? 'See the Tracks tab.' : ''}</span></p>`);
+  else if (todo) notes.push(`<p class="note warn">${icon('warn')}<span>${plural(todo, 'un-analysed track')} would be left out.</span></p>`);
+  if (p.tracks > 80) notes.push(`<p class="note warn">${icon('warn')}<span>Large playlist: Claude may take 10 minutes or more, or time out.</span></p>`);
+  const build = (label, ai, primary) => `<button class="btn${primary ? ' primary' : ''}" data-run="build" data-body='{"ai":${ai}}' data-busy data-off="${ready ? 0 : 1}">${label}</button>`;
+  if (original) return `<div class="center">${icon('arranged')}<h2 class="small">Arranged by Segue</h2>
+    <p>This is the set order Segue wrote from “${esc(original.name)}”. In rekordbox, click its # column to sort it into that order.</p>
+    <div class="actions"><button class="btn primary" data-show="${esc(original.id)}">Show Original</button>${build('Arrange Again with Claude', true)}${build('Use Rules Only', false)}</div>
+    ${notes.join('')}</div>`;
+  return `<div class="center">${icon('segue')}<h2 class="small">Arrange “${esc(p.name)}”</h2>
+    <p>Claude orders the tracks and picks where to enter and leave each one. It takes about 5 to 8 minutes for 50 tracks.</p>
+    <div class="actions">${build('Build with Claude', true, true)}${build('Use Rules Only', false)}</div>
+    <p class="fine">Rules only is instant: it follows an energy arc and keeps key and tempo changes smooth.</p>
+    ${notes.join('')}</div>`;
+}
+
+function stripHTML(t) {
+  const total = t.duration || 1, pct = s => Math.max(0, Math.min(100, s / total * 100)).toFixed(2);
+  const phrases = t.phrases.map((ph, i) => {
+    const end = i + 1 < t.phrases.length ? t.phrases[i + 1].start : total;
+    const cls = PHRASES.includes(ph.label) ? ph.label : 'phrase';
+    return `<span style="width:${pct(Math.max(end - ph.start, 0))}%" title="${cls === 'phrase' ? '8-bar block' : cls} · ${mmss(ph.start)}"><i class="ph-${cls}"></i></span>`;
+  }).join('');
+  const c = t.cue_times;
+  const tick = (k, name) => c[k] == null ? '' : `<i class="tick" style="left:${pct(c[k])}%" title="${name} ${mmss(c[k])}"></i>`;
+  return `<div class="strip" aria-hidden="true"><div class="phs">${phrases}</div>
+    <i class="veil" style="left:0;width:${pct(c.in)}%"></i><i class="veil" style="left:${pct(c.out)}%;right:0"></i>
+    <i class="cue in" style="left:${pct(c.in)}%"><b>IN</b></i><i class="cue out" style="left:${pct(c.out)}%"><b>OUT</b></i>
+    ${tick('body', 'BODY')}${tick('drop', 'DROP')}</div>`;
+}
+
+function trackHTML(t, i, transition) {
+  const c = t.cue_times;
+  const cues = CUES.filter(([k]) => c[k] != null).map(([k, name]) => `<span><b>${name}</b>${mmss(c[k])}</span>`).join('');
+  let html = `<li class="track grid" id="t-${i}">
+    <div class="num">${i + 1}</div>
+    <div><div class="title" title="${esc(t.title)}">${esc(t.title)}</div><div class="artist">${esc(t.artist)}</div>
+      ${t.pick && t.pick.why ? `<p class="why selectable">${esc(t.pick.why)}</p>` : ''}
+      ${t.own_cues ? `<p class="own">${icon('info')}<span>Has ${plural(t.own_cues, 'cue')} of your own. They stay; Segue’s go in as memory cues.</span></p>` : ''}</div>
+    <div class="shape">${stripHTML(t)}<div class="cues">${cues}</div></div>
+    <div class="stat">${t.bpm.toFixed(1)}</div><div class="stat">${esc(t.key)}</div><div class="stat">${mmss(c.out - c.in)}</div></li>`;
+  if (transition) {
+    const sign = transition.tempo_pct > 0 ? '+' : '';
+    html += `<li class="segue"><div class="link"><i class="mark ${transition.rating}"></i></div>
+      <div class="segue-body selectable"><b>${RATING[transition.rating] || esc(transition.rating)}</b> · ${sign}${transition.tempo_pct.toFixed(1)}% tempo · ${esc(transition.key)}
+        <div class="how">${esc(transition.how)}</div></div></li>`;
+  }
+  return html;
+}
+
+function arcHTML(set) {
+  const tracks = set.tracks, n = tracks.length, bpms = tracks.map(t => t.bpm);
+  const low = Math.min(...bpms), high = Math.max(...bpms), span = high - low || 1;
+  const y = bpm => high === low ? .5 : 1 - (bpm - low) / span;
+  const cols = tracks.map(t => `<span><i style="--e:${Math.max(t.energy, 0).toFixed(3)}"></i></span>`).join('');
+  const points = tracks.map((t, i) => `${i + .5},${y(t.bpm).toFixed(3)}`).join(' ');
+  const flags = set.transitions.map((tr, i) => tr.rating === 'clash' || tr.rating === 'hard'
+    ? `<i class="mark ${tr.rating}" style="left:${((i + 1) / n * 100).toFixed(2)}%"></i>` : '').join('');
+  const counts = Object.keys(RATING).map(r => [r, set.transitions.filter(tr => tr.rating === r).length]).filter(([, c]) => c);
+  return `<div><div class="arc" id="arc" role="img" aria-label="Energy and tempo across the set, track by track. The same values are in the list below.">
+      <span class="arc-label">Energy</span><div class="arc-cols" id="arc-cols" style="--gap:${n > 90 ? 1 : 2}px">${cols}</div><span></span>
+      <span class="arc-label">Tempo</span><div class="arc-tempo" id="arc-tempo"><svg viewBox="0 0 ${n} 1" preserveAspectRatio="none"><polyline points="${points}"/></svg><i class="arc-dot" hidden></i></div>
+      <span class="arc-scale"><span>${high.toFixed(0)} BPM</span><span>${low.toFixed(0)}</span></span>
+      <span></span><div class="arc-flags">${flags}</div><span></span>
+      <div class="arc-hit" id="arc-hit"></div></div>
+    <div class="tally">${counts.map(([r, c]) => `<span><i class="mark ${r}"></i>${c} ${RATING[r].toLowerCase() === 'ok' ? 'OK' : RATING[r].toLowerCase()}</span>`).join('')}</div></div>`;
+}
+
+function renderSet(p) {
+  const pane = $('pane-set');
+  if (S.set === undefined) { pane.innerHTML = '<p class="message">Loading…</p>'; return; }
+  if (!S.set) { pane.innerHTML = emptySetHTML(p); return; }
+  // Tracks Claude left out of the flow are last in the order and have no cues.
+  const leftOut = S.set.tracks.filter(t => t.left_out);
+  const set = {...S.set, tracks: S.set.tracks.filter(t => !t.left_out)};
+  const mode = set.mode.charAt(0).toUpperCase() + set.mode.slice(1), copy = arrangedCopy(p);
+  const disclosure = (summary, items) => items.length ? `<details class="more"><summary>${icon('chevron')}${summary}</summary>
+    <ul class="selectable">${items.map(x => `<li>${esc(x)}</li>`).join('')}</ul></details>` : '';
+  const used = new Set(set.tracks.flatMap(t => t.phrases.map(ph => PHRASES.includes(ph.label) ? ph.label : 'phrase')));
+  const legend = PHRASES.filter(l => used.has(l)).map(l => `<span><i class="sw ph-${l}" style="height:${l === 'chorus' ? 11 : l === 'up' || l === 'verse' ? 9 : 7}px"></i>${PHRASE_NAME[l] || l}</span>`).join('');
+  pane.innerHTML = `<div class="set-head">
+      <div class="set-meta"><span>${plural(set.tracks.length, 'track')}</span><span>${set.minutes} min</span><span>${esc(mode)}</span>
+        <span>Built ${esc(builtWhen(set.built_at))}</span>${copy ? `<span class="in-rb">${icon('check')}In rekordbox as “${esc(copy.name)}”</span>` : ''}</div>
+      ${set.notes ? `<p class="lede selectable">${esc(set.notes)}</p>` : ''}
+      ${arcHTML(set)}
+      ${disclosure(`${plural(leftOut.length, 'track')} left out of the flow by Claude (last in the playlist, no cues)`, leftOut.map(t => `${t.title} - ${t.artist}`))}
+      ${disclosure(`${plural(set.skipped.length, 'track')} left out (not analysed)`, set.skipped)}
+      ${disclosure(`${plural(set.problems.length, 'pick')} from Claude couldn’t be used; the default cues were kept`, set.problems)}
+    </div>
+    <div class="key"><div>${legend}<span>Faded parts of a strip are not played.</span></div>
+      <div>${CUES.map(([, name, what]) => `<span><b>${name}</b>${what}</span>`).join('')}</div></div>
+    <div class="grid cols"><span class="c">#</span><span>Track</span><span class="c-shape">Structure and cues</span>
+      <span class="r">BPM</span><span class="r">Key</span><span class="r">Plays</span></div>
+    <ol class="set-list">${set.tracks.map((t, i) => trackHTML(t, i, set.transitions[i])).join('')}</ol>`;
+  wireArc(set);
+}
+
+function wireArc(set) {
+  const hit = $('arc-hit'), cols = $('arc-cols').children, dot = $('arc-tempo').querySelector('.arc-dot'), tip = $('tip');
+  const n = set.tracks.length, bpms = set.tracks.map(t => t.bpm), low = Math.min(...bpms), high = Math.max(...bpms);
+  let on = -1;
+  const indexAt = e => { const box = hit.getBoundingClientRect(); return Math.max(0, Math.min(n - 1, Math.floor((e.clientX - box.left) / box.width * n))); };
+  const clear = () => { if (on >= 0) cols[on].classList.remove('on'); on = -1; dot.hidden = true; tip.hidden = true; };
+  hit.onpointermove = e => {
+    const i = indexAt(e), t = set.tracks[i], next = set.transitions[i];
+    if (i !== on) {
+      if (on >= 0) cols[on].classList.remove('on');
+      cols[i].classList.add('on'); on = i;
+      dot.hidden = false;
+      dot.style.left = `${(i + .5) / n * 100}%`;
+      dot.style.top = `${5 + (high === low ? .5 : 1 - (t.bpm - low) / (high - low)) * 28}px`;
+      tip.replaceChildren();
+      const add = (tag, text) => { const el = document.createElement(tag); el.textContent = text; tip.append(el); };
+      add('strong', `${i + 1}. ${t.title}`);
+      add('span', t.artist);
+      add('span', `Energy ${Math.round(t.energy * 100)}% · ${t.bpm.toFixed(1)} BPM · ${t.key}`);
+      if (next) add('span', `${RATING[next.rating] || next.rating} into ${set.tracks[i + 1].title}`);
+      tip.hidden = false;
+    }
+    const box = tip.getBoundingClientRect();
+    tip.style.left = `${Math.max(8, Math.min(innerWidth - box.width - 8, e.clientX + 14))}px`;
+    tip.style.top = `${Math.max(8, e.clientY - box.height - 14)}px`;
+  };
+  hit.onpointerleave = clear;
+  hit.onclick = e => {
+    const row = $('t-' + indexAt(e));
+    clear();
+    row.scrollIntoView({block: 'center', behavior: 'smooth'});
+    row.classList.remove('flash'); void row.offsetWidth; row.classList.add('flash');
+  };
+}
+
+// ---------- jobs ----------
+async function run(action, body) {
+  S.notice = null;
+  try {
+    const result = await api(`/api/${action}/${S.id}`, body || {});
+    if (!result.ok) throw new Error(result.error || 'Could not start.');
+    S.showJob = true;
+  } catch (e) { S.notice = e.message; }
+  poll();
+}
+
+function confirmWrite() {
+  const p = current(), set = S.set, copy = arrangedCopy(p);
+  $('sheet-title').textContent = `Add “${set.arranged_name}” to rekordbox?`;
+  $('sheet-text').textContent = 'Segue quits rekordbox, backs up its library, writes the cues and the playlist, then opens rekordbox again. Your original playlist is not changed.';
+  const leftOut = set.tracks.filter(t => t.left_out).length;
+  const items = [`IN, BODY, DROP and OUT cues on ${plural(set.tracks.length - leftOut, 'track')}.`];
+  if (leftOut) items.push(`${plural(leftOut, 'track')} Claude left out of the flow ${leftOut === 1 ? 'goes' : 'go'} last in the playlist, without cues.`);
+  if (set.own_cue_tracks) items.push(`${plural(set.own_cue_tracks, 'track')} already ${set.own_cue_tracks === 1 ? 'has' : 'have'} your own cues. Those stay; Segue’s are added as memory cues.`);
+  items.push(copy ? `Replaces the tracks in the existing “${copy.name}” playlist.` : `Creates the playlist “${set.arranged_name}”.`);
+  $('sheet-list').replaceChildren(...items.map(text => Object.assign(document.createElement('li'), {textContent: text})));
+  $('sheet').returnValue = 'cancel';
+  $('sheet').showModal();
+  $('sheet-ok').focus();
+}
+
+function progressOf(job) {
+  const last = pattern => { for (let i = job.lines.length - 1; i >= 0; i--) { const m = job.lines[i].match(pattern); if (m) return m; } };
+  if (job.kind === 'analyse') { const m = last(/^\[(\d+)\/(\d+)\]/); return m ? m[1] / m[2] : null; }
+  if (job.kind === 'write' && S.set && job.playlist_id === S.id) { const m = last(/^\s*(\d+)\. /); return m ? m[1] / S.set.tracks.length : null; }
+  return null;
+}
+
+function renderActivity() {
+  const job = S.job, box = $('activity');
+  const visible = (S.showJob && job.kind) || S.notice;
+  box.hidden = !visible;
+  $('scroller').style.scrollPaddingBottom = visible ? '96px' : '';
+  if (!visible) return;
+  const names = JOBS[job.kind] || ['Working', 'Finished', 'Failed'];
+  const lastLine = (job.lines[job.lines.length - 1] || '').trim();
+  const stopped = !job.running && !job.error && lastLine.startsWith('Stopped');
+  const elsewhere = job.playlist_id && job.playlist_id !== S.id ? (S.playlists || []).find(p => p.id === job.playlist_id) : null;
+  const countdown = job.running ? Math.max(0, job.countdown - (performance.now() - S.jobAt) / 1000) : 0;
+  let title, line = lastLine, iconHTML;
+  if (S.notice && !job.running) { title = 'That didn’t start'; line = S.notice; iconHTML = icon('fail'); }
+  else if (job.running && countdown > 0) {
+    title = 'Hover over the first track in rekordbox';
+    line = 'Reading the mouse position when the countdown ends. Then hands off.';
+    iconHTML = `<svg class="ring" viewBox="0 0 28 28"><circle cx="14" cy="14" r="12"/><circle cx="14" cy="14" r="12" style="stroke-dashoffset:${(75.4 * (1 - countdown / 6)).toFixed(1)}"/></svg><output>${Math.ceil(countdown)}</output>`;
+  } else if (job.running) { title = names[0]; iconHTML = '<span class="spin"></span>'; }
+  else if (job.error) { title = names[2]; line = job.error; iconHTML = icon('fail'); }
+  else if (stopped) { title = `${names[0]}: stopped`; line = 'Nothing else was changed.'; iconHTML = icon('info'); }
+  else { title = names[1]; iconHTML = icon('checkcircle'); }
+  const bad = !job.running && (job.error || S.notice), good = !job.running && !bad && !stopped;
+  $('act-icon').className = `act-icon${bad ? ' bad' : good ? ' good' : ''}`;
+  if ($('act-icon').dataset.html !== iconHTML) { $('act-icon').innerHTML = iconHTML; $('act-icon').dataset.html = iconHTML; }
+  $('act-title').textContent = elsewhere ? `${elsewhere.name}: ${title}` : title;
+  $('act-line').textContent = line; $('act-line').title = line;
+  const seconds = job.running ? job.elapsed + (performance.now() - S.jobAt) / 1000 : job.elapsed;
+  $('act-time').textContent = job.kind && !(S.notice && !job.running) ? mmss(seconds || 0) : '';
+  $('act-stop').hidden = !(job.running && job.kind === 'analyse');
+  $('act-close').hidden = job.running;
+  $('act-toggle').hidden = !job.lines.length;
+  box.classList.toggle('open', S.logOpen);
+  $('act-toggle').setAttribute('aria-expanded', S.logOpen);
+  const log = $('act-log'), text = job.lines.join('\n');
+  log.hidden = !S.logOpen || !job.lines.length;
+  if (!log.hidden && log.textContent !== text) {
+    const pinned = log.scrollTop + log.clientHeight >= log.scrollHeight - 8;
+    log.textContent = text;
+    if (pinned) log.scrollTop = log.scrollHeight;
+  }
+  const fraction = job.running ? progressOf(job) : null, bar = $('act-progress');
+  bar.hidden = fraction === null;
+  bar.firstElementChild.style.setProperty('--done', (fraction || 0).toFixed(3));
+}
+
+async function poll() {
+  let job;
+  try { job = await api('/api/job'); } catch (e) { return; }
+  const was = S.job.running;
+  S.job = job; S.jobAt = performance.now();
+  if (job.running) { S.showJob = true; S.notice = null; }
+  if (was !== job.running) { renderSidebar(); renderHeader(); renderPanes(); }
+  renderActivity();
+  if (was && !job.running) {
+    await loadPlaylists();
+    if (job.playlist_id === S.id) {
+      await loadSet();
+      if (S.tracks !== undefined) loadTracks();
+      if (job.kind === 'build' && !job.error) setTab('set');
+    }
+  }
+}
+
+// ---------- events ----------
+$('list').addEventListener('click', e => { const row = e.target.closest('.row'); if (row) select(row.dataset.id); });
+$('list').addEventListener('keydown', e => {
+  if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+  e.preventDefault();
+  const rows = [...$('list').querySelectorAll('.row')], at = rows.indexOf(document.activeElement);
+  const next = rows[Math.max(0, Math.min(rows.length - 1, at + (e.key === 'ArrowDown' ? 1 : -1)))];
+  if (next) select(next.dataset.id).then(() => $('list').querySelector('[aria-selected="true"]')?.focus());
+});
+$('search').addEventListener('input', e => { S.query = e.target.value; renderSidebar(); });
+$('search').addEventListener('keydown', e => {
+  if (e.key === 'Escape') { e.target.value = S.query = ''; renderSidebar(); e.target.blur(); }
+  if (e.key === 'ArrowDown') { e.preventDefault(); $('list').querySelector('.row')?.focus(); }
+});
+$('refresh').onclick = loadPlaylists;
+$('tabs').addEventListener('click', e => { const tab = e.target.closest('[data-tab]'); if (tab) setTab(tab.dataset.tab); });
+const toggleSidebar = show => { $('app').classList.toggle('no-side', !show); remember(); };
+$('hide-side').onclick = () => toggleSidebar(false);
+$('show-side').onclick = () => toggleSidebar(true);
+
+document.addEventListener('click', e => {
+  const starter = e.target.closest('[data-run]');
+  const onRebuild = e.target.closest('#rebuild');
+  if (onRebuild && $('menu').hidden) openMenu(e.detail === 0); else closeMenu();
+  if (starter) run(starter.dataset.run, JSON.parse(starter.dataset.body || '{}'));
+  else if (e.target.closest('#add')) confirmWrite();
+  else if (e.target.closest('[data-show]')) select(e.target.closest('[data-show]').dataset.show);
+  else if (e.target.closest('#stop-inline')) api('/api/stop', {});
+});
+$('sheet').addEventListener('close', () => { if ($('sheet').returnValue === 'ok') run('write'); });
+$('sheet').addEventListener('click', e => { if (e.target === $('sheet')) $('sheet').close('cancel'); });
+// The Rebuild pull-down. A plain positioned element: the app's web view has no Popover API.
+function openMenu(byKeyboard) {
+  const box = $('rebuild').getBoundingClientRect(), menu = $('menu');
+  menu.style.top = `${box.bottom + 6}px`;
+  menu.style.right = `${Math.max(8, innerWidth - box.right)}px`;
+  $('menu-claude').textContent = current().tracks > 80 ? '10+ minutes, may time out' : 'several minutes';
+  menu.hidden = false;
+  $('rebuild').setAttribute('aria-expanded', 'true');
+  if (byKeyboard) menu.querySelector('button').focus();   // a mouse-opened Mac menu highlights nothing until hover
+}
+function closeMenu() {
+  if ($('menu').hidden) return;
+  $('menu').hidden = true;
+  $('rebuild')?.setAttribute('aria-expanded', 'false');
+}
+$('menu').addEventListener('keydown', e => {
+  const items = [...$('menu').children], at = items.indexOf(document.activeElement);
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); items[(at + (e.key === 'ArrowDown' ? 1 : items.length - 1)) % items.length].focus(); }
+  else if (e.key === 'Escape') { closeMenu(); $('rebuild')?.focus(); }
+});
+addEventListener('blur', closeMenu);
+$('act-stop').onclick = () => api('/api/stop', {});
+$('act-toggle').onclick = () => { S.logOpen = !S.logOpen; renderActivity(); const log = $('act-log'); log.scrollTop = log.scrollHeight; };
+$('act-close').onclick = () => { S.showJob = false; S.notice = null; S.logOpen = false; renderActivity(); };
+$('scroller').addEventListener('scroll', () => $('main').classList.toggle('scrolled', $('scroller').scrollTop > 0), {passive: true});
+
+document.addEventListener('keydown', e => {
+  if (!e.metaKey || e.shiftKey || e.altKey) return;
+  if (e.key === 'f') { e.preventDefault(); toggleSidebar(true); $('search').focus(); $('search').select(); }
+  else if (e.key === '1' && current()) { e.preventDefault(); setTab('tracks'); }
+  else if (e.key === '2' && current()) { e.preventDefault(); setTab('set'); }
+  else if (e.key === 'r' && window.shell) { e.preventDefault(); loadPlaylists(); }
+});
+document.addEventListener('contextmenu', e => { if (window.shell && !e.target.closest('.selectable, input')) e.preventDefault(); });
+// The toolbar and the top of the sidebar act as the window's title bar.
+document.addEventListener('mousedown', e => {
+  if (!window.shell || e.button !== 0 || !e.target.closest('[data-drag]') || e.target.closest('button, input, [role="tab"]')) return;
+  window.shell.postMessage(e.detail === 2 ? 'zoom' : 'drag');
+});
+const syncFullscreen = () => $('app').classList.toggle('fullscreen', innerHeight >= screen.height);
+addEventListener('resize', () => { syncFullscreen(); closeMenu(); });
+
+async function start() {
+  syncFullscreen();
+  renderSidebar(); renderHeader(); renderPanes();
+  const [saved] = await Promise.all([api('/api/state').catch(() => ({})), loadPlaylists(), poll()]);
+  if (saved.sidebar === false) $('app').classList.add('no-side');
+  if (saved.playlist && S.playlists && S.playlists.some(p => p.id === saved.playlist)) {
+    await select(saved.playlist, saved.tab === 'tracks' ? 'tracks' : 'set');
+    $('list').querySelector('[aria-selected="true"]')?.scrollIntoView({block: 'nearest'});
+  }
+  setInterval(poll, 1500);
+  setInterval(() => { if (S.job.running) renderActivity(); }, 250);
+}
+start();
+</script>
+</body></html>

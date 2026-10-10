@@ -1,0 +1,14 @@
+# Local environment and build output
+.venv/
+__pycache__/
+*.app/
+.DS_Store
+
+# Your own data: working files, and copies of your rekordbox library
+.cache/
+backups/
+
+# Editor and assistant files
+CLAUDE.md
+.claude/
+.impeccable/
